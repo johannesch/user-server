@@ -4,9 +4,10 @@ user-server
 Requirements
 ------------
 
+```
 flask 0.8
 sqlite3
-
+```
 
 Initializing the database
 -------------------------
