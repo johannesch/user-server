@@ -166,9 +166,47 @@ class UserServerTestCase(unittest.TestCase):
     ctx.pop()
 
 
-  def test_update_user(self):
+  def test_update_user_put(self):
     user_server.init_db('test_data.sql')
-    #TODO...
+    response = self.app.put('/users/1', data=json.dumps(
+          {
+            "name": "Hans Huber",
+            "email": "hanshu@example.com",
+            "password": "thisisapassword"
+          }
+        ),
+        content_type='application/json'
+      )
+    self.assertIn('hanshu@example.com', response.data)
+    self.assertIn('Hans Huber', response.data)
+    self.assertNotIn('password', response.data)
+    response = self.app.put('/users/1', data=json.dumps(
+          {
+            "name": "Hansi",
+            "email": "hansi@example.com",
+            "password": "thisisapassword"
+          }
+        ),
+        content_type='application/json'
+      )
+    self.assertIn('hansi@example.com', response.data)
+    self.assertIn('Hansi', response.data)
+    response = self.app.put('/users/1', data=json.dumps(
+          {
+            "password": "thisisanotherpassword"
+          }
+        ),
+        content_type='application/json'
+      )
+    self.assertEqual(response._status_code, 200)
+    self.assertIn('Hansi', response.data)
+    self.assertIn('hansi@example.com', response.data)
+    with closing(sqlite3.connect(
+        user_server.app.config['DATABASE'])) as db:
+      cursor = db.cursor().execute('SELECT password FROM users WHERE id=1')
+      row = cursor.fetchone()
+      self.assertEqual(row[0], '1042e9c6b7770c5a8d73d7274bb1e787')
+      
     
 if __name__ == '__main__':
     unittest.main()

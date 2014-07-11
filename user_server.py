@@ -225,11 +225,12 @@ def update_user_by_name(uid):
 def update_user(uid):
   if not request.json or len(request.json) == 0:
     abort(400)
-  cur = g.db.execute('SELECT id, name, email FROM users WHERE id=%i' % uid)
+  cur = g.db.execute('SELECT id, name, email, password '
+      'FROM users WHERE id=%i' % uid)
   row = cur.fetchone()
   if row == None:
     abort(404)
-  user = dict(id=row[0], name=row[1], email=row[2])
+  user = dict(id=row[0], name=row[1], email=row[2], password=[3])
   modified_user = user
   for field, value in request.json.items():
     if field in ["name", "email", "password"]:
@@ -240,12 +241,15 @@ def update_user(uid):
         abort(400)
       if field == "password":
         value = hash_password(value)
-      modified_user[field] = value
-  cur = g.db.execute(
-      'UPDATE users (id,name,email,password) VALUES (%i,%s,%s,%s)' %
-        (uid,request.json['name'], request.json['email'], password)
-    )
+      if value != user[field]:
+        modified_user[field] = value
+  set_clause = 'SET ' + ', '.join([f+'="'+str(v)+'"'
+      for f,v in modified_user.items()])
+  cur = g.db.execute('UPDATE users %s WHERE id=%i' % (set_clause, uid))
   g.db.commit()
+  cur = g.db.execute('SELECT id, name, email, password '
+      'FROM users WHERE id=%i' % uid)
+  row = cur.fetchone()
   return jsonify(
       { 'user modified': user_repr(modified_user) }
     )
