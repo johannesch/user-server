@@ -214,11 +214,11 @@ def create_user():
 
 
 @app.route('/users/<string:name>', methods=["PUT", "PATCH"])
-def update_user_by_name(uid):
+def update_user_by_name(name):
   uid = get_uid_by_name(name, like=False)
   if uid == None:
     abort(404)
-  update_user(uid)
+  return update_user(uid)
 
 
 @app.route('/users/<int:uid>', methods=["PUT", "PATCH"])
@@ -257,7 +257,7 @@ def update_user(uid):
 
 @app.route('/users/<string:name>', methods=["DELETE"])
 def delete_user_by_name(name):
-  uid = get_uid_by_name(name, like=false)
+  uid = get_uid_by_name(name, like=False)
   if uid == None:
     abort(404)
   return delete_user(uid)

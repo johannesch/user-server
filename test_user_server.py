@@ -32,18 +32,74 @@ class UserServerTestCase(unittest.TestCase):
     self.assertIn('"users": []', response.data)
 
 
-  def create_user_asserts(self, response):
+  def test_create_user_post(self):
+    self.create_user_m(self.app.post)
+
+
+  def test_create_user_put(self):
+    self.create_user_m(self.app.put)
+
+
+  def create_user_m(self, method):
+    response = method('/users', data=json.dumps(
+          {
+            "name": "Hans Huber",
+            "email": "hahu@example.com",
+            "password": "thisisapassword"
+          }
+        ),
+        content_type='application/json'
+      )
+    self.assertEqual(response._status_code, 200)
     self.assertIn('Hans Huber', response.data)
     self.assertIn('hahu@example.com', response.data)
     self.assertNotIn('password', response.data)
     self.assertNotIn('thisisapassword', response.data)
     self.assertIn('"id":', response.data)
-    response2 = self.app.get('/users')
-    self.assertIn('"users": [', response2.data)
-
-
-  def test_create_user_post(self):
-    response = self.app.post('/users', data=json.dumps(
+    response = self.app.get('/users')
+    self.assertIn('"users": [', response.data)
+    response = method('/users', data='{"password": "thisisapassword',
+        content_type='application/json'
+      )
+    self.assertEqual(response._status_code, 400)
+    response = method('/users', data=json.dumps(
+          {
+            "email": "hahu@example.com",
+            "password": "thisisapassword"
+          }
+        ),
+        content_type='application/json'
+      )
+    self.assertEqual(response._status_code, 400)
+    response = method('/users', data=json.dumps(
+          {
+            "name": "Hans Huber",
+            "password": "thisisapassword"
+          }
+        ),
+        content_type='application/json'
+      )
+    self.assertEqual(response._status_code, 400)
+    response = method('/users', data=json.dumps(
+          {
+            "name": "Hans Huber",
+            "email": "hahu@example.com",
+          }
+        ),
+        content_type='application/json'
+      )
+    self.assertEqual(response._status_code, 400)
+    response = method('/users', data=json.dumps(
+          {
+            "name": "Hans Huber",
+            "email": "hahu@example.com",
+            "password": "tooshrt"
+          }
+        ),
+        content_type='application/json'
+      )
+    self.assertEqual(response._status_code, 400)
+    response = method('/users', data=json.dumps(
           {
             "name": "Hans Huber",
             "email": "hahu@example.com",
@@ -52,20 +108,8 @@ class UserServerTestCase(unittest.TestCase):
         ),
         content_type='application/json'
       )
-    self.create_user_asserts(response)
-
-
-  def test_create_user_put(self):
-    response = self.app.post('/users', data=json.dumps(
-          {
-            "name": "Hans Huber",
-            "email": "hahu@example.com",
-            "password": "thisisapassword"
-          }
-        ),
-        content_type='application/json'
-      )
-    self.create_user_asserts(response)
+    self.assertEqual(response._status_code, 400)
+    
 
 
   def test_options_users(self):
@@ -167,8 +211,72 @@ class UserServerTestCase(unittest.TestCase):
 
 
   def test_update_user_put(self):
+    self.update_user_m(self.app.put)
+
+  def test_update_user_patch(self):
+    self.update_user_m(self.app.patch)
+
+  def test_update_user_by_name_put(self):
+    self.update_user_m(self.app.put, name=True)
+
+  def test_update_user_by_name_patch(self):
+    self.update_user_m(self.app.patch, name=True)
+
+
+  def update_user_m(self, method, name=False):
     user_server.init_db('test_data.sql')
-    response = self.app.put('/users/1', data=json.dumps(
+    uri = name and '/users/Hans%20Huber' or '/users/1'
+    response = method(uri, data='{"password": "thisi',
+        content_type='application/json'
+      )
+    self.assertEqual(response._status_code, 400)
+    response = method(uri, data='',
+        content_type='application/json'
+      )
+    self.assertEqual(response._status_code, 400)
+    response = method(uri, data='')
+    self.assertEqual(response._status_code, 400)
+    response = method(uri, data=json.dumps(
+          {
+            "name": None,
+            "email": "hanshu@example.com",
+            "password": "thisisapassword"
+          }
+        ),
+        content_type='application/json'
+      )
+    self.assertEqual(response._status_code, 400)
+    response = method(uri, data=json.dumps(
+          {
+            "name": "",
+            "email": "hanshu@example.com",
+            "password": "thisisapassword"
+          }
+        ),
+        content_type='application/json'
+      )
+    self.assertEqual(response._status_code, 400)
+    response = method(uri, data=json.dumps(
+          {
+            "name": "Hans Huber",
+            "email": "hanshu@exampl",
+            "password": "thisisapassword"
+          }
+        ),
+        content_type='application/json'
+      )
+    self.assertEqual(response._status_code, 400)
+    response = method(uri, data=json.dumps(
+          {
+            "name": "Hans Huber",
+            "email": "hanshu@example.com",
+            "password": "this"
+          }
+        ),
+        content_type='application/json'
+      )
+    self.assertEqual(response._status_code, 400)
+    response = method(uri, data=json.dumps(
           {
             "name": "Hans Huber",
             "email": "hanshu@example.com",
@@ -177,10 +285,11 @@ class UserServerTestCase(unittest.TestCase):
         ),
         content_type='application/json'
       )
+    self.assertEqual(response._status_code, 200)
     self.assertIn('hanshu@example.com', response.data)
     self.assertIn('Hans Huber', response.data)
     self.assertNotIn('password', response.data)
-    response = self.app.put('/users/1', data=json.dumps(
+    response = method(uri, data=json.dumps(
           {
             "name": "Hansi",
             "email": "hansi@example.com",
@@ -189,9 +298,11 @@ class UserServerTestCase(unittest.TestCase):
         ),
         content_type='application/json'
       )
+    self.assertEqual(response._status_code, 200)
     self.assertIn('hansi@example.com', response.data)
     self.assertIn('Hansi', response.data)
-    response = self.app.put('/users/1', data=json.dumps(
+    uri = name and '/users/Hansi' or '/users/1'
+    response = method(uri, data=json.dumps(
           {
             "password": "thisisanotherpassword"
           }
@@ -206,7 +317,87 @@ class UserServerTestCase(unittest.TestCase):
       cursor = db.cursor().execute('SELECT password FROM users WHERE id=1')
       row = cursor.fetchone()
       self.assertEqual(row[0], '1042e9c6b7770c5a8d73d7274bb1e787')
-      
+    uri = name and '/users/Hans Huber' or '/users/4'
+    response = method(uri, data=json.dumps(
+          {
+            "name": "Hans Huber",
+            "email": "hanshu@example.com",
+            "password": "thisisapassword"
+          }
+        ),
+        content_type='application/json'
+      )
+    self.assertEqual(response._status_code, 404)
+
+
+  def test_get_users(self):
+    user_server.init_db('test_data.sql')
+    response = self.app.get('/users', content_type='application/json')
+    self.assertEqual(response._status_code, 200)
+    users = json.loads(response.data)
+    self.assertEqual(len(users['users']), 3)
+    for user in users['users']:
+      self.assertEqual(len(user.keys()), 4)
+      self.assertIn('name', user.keys())
+      self.assertIn('email', user.keys())
+      self.assertIn('uri', user.keys())
+      self.assertIn('id', user.keys())
+
+
+  def test_get_user(self):
+    self.get_user_m()
+
+
+  def test_get_user_by_name(self):
+    self.get_user_m(name=True)
+
+
+  def get_user_m(self, name=False):
+    user_server.init_db('test_data.sql')
+    uri = name and '/users/Hansi' or '/users/4'
+    response = self.app.get(uri, content_type='application/json')
+    self.assertEqual(response._status_code, 404)
+    uri = name and '/users/Hans%20Huber' or '/users/1'
+    response = self.app.get(uri, content_type='application/json')
+    self.assertEqual(response._status_code, 200)
+    user = json.loads(response.data)['user']
+    self.assertEqual(len(user.keys()), 4)
+    self.assertIn('name', user.keys())
+    self.assertIn('email', user.keys())
+    self.assertIn('uri', user.keys())
+    self.assertIn('id', user.keys())
+
+
+  def test_delete_user(self):
+    self.delete_user_m()
+
+
+  def test_delete_user_by_name(self):
+    self.delete_user_m(name=True)
+   
+    
+  def delete_user_m(self, name=False):
+    user_server.init_db('test_data.sql')
+    uri = name and '/users/Hansi' or '/users/4'
+    response = self.app.delete(uri, content_type='application/json')
+    self.assertEqual(response._status_code, 404)
+    uri = name and '/users/Hans%20Huber' or '/users/1'
+    response = self.app.delete(uri, content_type='application/json')
+    self.assertEqual(response._status_code, 200)
+    user = json.loads(response.data)['user deleted']
+    self.assertEqual(len(user.keys()), 4)
+    self.assertIn('name', user.keys())
+    self.assertIn('email', user.keys())
+    self.assertIn('uri', user.keys())
+    self.assertIn('id', user.keys())
+    response = self.app.get('/users', content_type='application/json')
+    self.assertEqual(response._status_code, 200)
+    users = json.loads(response.data)
+    self.assertEqual(len(users['users']), 2)
+    uri = name and '/users/Hans%20Huber' or '/users/1'
+    response = self.app.delete(uri, content_type='application/json')
+    self.assertEqual(response._status_code, 404)
+    
     
 if __name__ == '__main__':
     unittest.main()
